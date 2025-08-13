@@ -225,6 +225,8 @@ export default function Cadastro() {
                     await cpfPublicoCollectionRef.doc(currentUserId).set({cpf:userObjeto.cpf});
                     const emailPublicoCollectionRef = firestore().collection("email_publico")
                     await emailPublicoCollectionRef.doc(currentUserId).set({email:userObjeto.email});
+
+                    await userCredential.sendEmailVerification()
                     
                     setTimeout(async () => { 
                         await auth().signOut()
@@ -244,7 +246,7 @@ export default function Cadastro() {
                     
                     Alert.alert(
                         "Conta cadastrada com sucesso!",
-                        "Foi enviado uma mensagem de confirmação de cadastro para o e-mail cadastrado!"
+                        "Foi enviado uma mensagem de confirmação de cadastro para o e-mail cadastrado, se não recebeu, verifique também sua caixa de Span!"
                     );
                 
                 }
