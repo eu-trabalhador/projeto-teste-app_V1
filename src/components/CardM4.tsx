@@ -1,26 +1,29 @@
-import React, { SetStateAction, useEffect, useState } from 'react';
-import { TouchableOpacity, Text, StyleSheet, Image, View } from 'react-native';
-
+import React, { useState } from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Image,
+  View,
+} from 'react-native';
 
 type Props = {
   imagePath: any;
-  name :string;
+  name: string;
   text1: string;
   text2: string;
   text3: string;
-  text4: string|null;
+  text4: string | null;
   selecting: boolean;
   longPress?: () => void;
   number?: (value: number) => void;
-  action?: (it:[string,string,string]) => void;
-  extecao:any,
-  view?: (it:string) => void;
+  action?: (it: [string, string, string]) => void;
+  extecao: any;
+  view?: (it: string) => void;
 };
 
-
-
 export const CardM4 = ({
-  imagePath, 
+  imagePath,
   name,
   text1,
   text2,
@@ -31,77 +34,67 @@ export const CardM4 = ({
   number,
   action,
   extecao,
-  view
-}:Props) => {
-
+  view,
+}: Props) => {
   const [status, setStatus] = useState(false);
+
   const toggleStatus = (value: boolean) => {
     setStatus(value);
-    if(value &&  action){
-      action([imagePath,'add',name])
+    if (value && action) {
+      action([imagePath, 'add', name]);
     }
-    if(!value &&  action){
-      action([imagePath,'remove',name])
+    if (!value && action) {
+      action([imagePath, 'remove', name]);
     }
   };
+
   const toggleView = () => {
-    if(imagePath && view) view(imagePath)
+    if (imagePath && view) view(imagePath);
   };
-  // const toggleStatus = (value: boolean) => {
-  //   setStatus(value);
-  //   if(value && number){
-  //     number(+1)
-  //   }
-  //   if(!value && number){
-  //     number(-1)
-  //   }
-  // };
 
- 
-
-  // useEffect(()=>{
-  //   console.log(getFilePath(extecao))
-  //   console.log(getFilePath(extecao))
-  // },[])
-  
-  const backgroundColor = status ? "#ADD1F4" : "#ffffff";
-
-  // console.log(extecao)
+  const backgroundColor = status ? '#ADD1F4' : '#ffffff';
 
   return (
-    <TouchableOpacity 
-    style={[styles.button, { backgroundColor }]} 
-
-    onPress={()=>{
-      if(selecting){
-        if(status) toggleStatus(false)
-        else(toggleStatus(true))
-      }else{
-        toggleView()
-      }
-    }}     
-    
-    onLongPress={()=>{
-      if(selecting){
-        toggleStatus(!status)
-      }
-      if(!selecting){
-        if(longPress)longPress()
-          toggleStatus(true)
-      }
-    
-    }}
+    <TouchableOpacity
+      style={[styles.button, { backgroundColor }]}
+      onPress={() => {
+        if (selecting) {
+          toggleStatus(!status);
+        } else {
+          toggleView();
+        }
+      }}
+      onLongPress={() => {
+        if (selecting) {
+          toggleStatus(!status);
+        } else {
+          if (longPress) longPress();
+          toggleStatus(true);
+        }
+      }}
     >
       <View style={styles.container}>
-        <Image
-          source={extecao}
-          style={styles.image}
-        />
-        <View style = {styles.containerText}>
-          <Text allowFontScaling={false} style={styles.text1}>{`Enviado em ${text3}`}</Text>
-          <Text allowFontScaling={false} style={styles.text1} numberOfLines={2} ellipsizeMode="tail">{name}</Text>
-          <Text allowFontScaling={false} style={styles.text2}>{"Cidade, UF"}</Text>
-          <Text allowFontScaling={false} style={styles.text3}>{text4}</Text>
+        <Image source={extecao} style={styles.image} />
+        <View style={styles.containerText}>
+          <Text allowFontScaling={false} style={styles.text1}>
+            {`Enviado em ${text3}`}
+          </Text>
+          <Text
+            allowFontScaling={false}
+            style={styles.text1}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {name}
+          </Text>
+          <Text allowFontScaling={false} style={styles.text2}>
+            {text2 || 'Cidade, UF'}
+          </Text>
+          {text4 ? (
+            <Text allowFontScaling={false} style={styles.text3}>
+              {text4}
+            </Text>
+          ) : null}
         </View>
       </View>
     </TouchableOpacity>

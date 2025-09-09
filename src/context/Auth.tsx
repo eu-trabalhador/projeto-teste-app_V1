@@ -17,6 +17,7 @@ type UsuarioType = {
   telefone:string,
   dataCadastro: string,
   imagem:string,
+  acesso: number,
 }
 
 interface AuthContexDate{
@@ -55,80 +56,121 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children})=>{
   const [visibleBar , setVisibleBar] = useState(false);
   const [action , setAction] = useState('');
   const [loged , setLoged] = useState(false);
+  const [loadingUsuario, setLoadingUsuario] = useState(true);
 
+  
+  useEffect(() => {
+    if (action === 'login' && user) {
+      setLoadingUsuario(true);
 
+      // Escuta em tempo real as mudanças no documento do usuário
+      const unsubscribe = firestore()
+        .collection("usuario")
+        .doc(user.uid)
+        .onSnapshot(doc => {
+          if (doc.exists) {
+            const userData = doc.data() as UsuarioType;
+            setUsuario(userData);
+          } else {
+            setUsuario({} as UsuarioType);
+          }
+          setLoadingUsuario(false);
+        }, (error) => {
+          console.error("Erro ao carregar usuário:", error);
+          Alert.alert("Erro ao carregar informações do usuário");
+          setLoadingUsuario(false);
+        });
+
+      return () => unsubscribe();
+    }
+  }, [action, user]);
   
   useEffect(() => { 
     console.log("v1 - ",action)
     if(action == "cadastro") {
       return
     }
+    else if (action === 'login') {
+const unsubscribe = auth().onAuthStateChanged(async (_user) => {
+  setUser(_user);
 
-    
+  if (!_user) {
+    setInitializing(false);
+    await AsyncStorage.removeItem("@user");
+    return;
+  }
 
-
-    else if(action=='login'){
-      const unsubscribe = auth().onAuthStateChanged(async(_user)=>{
-        try{
-          setUser(_user)
-          if(_user && auth().currentUser){
-            try{
-    
-              if (!_user.emailVerified) {
-                await auth().currentUser?.sendEmailVerification()
-                Alert.alert("E-mail não verificado","Acesse no e-mail cadastrado, clique no link enviado e tente novamente!");
-                setTimeout(async () => { 
-                  await auth().signOut();
-                  AsyncStorage.removeItem("@user");
-                  setInitializing(false)
-                  setUsuario({} as UsuarioType);
-                }, 500);
-                return;
-              } else{
-
-
-                const querySnapshot = await firestore().collection("usuario").where("email", "==", _user.email).get();
-                
-                if (!querySnapshot.empty) {
-                  const usuarioData = querySnapshot.docs[0].data() as UsuarioType;
-                  setUsuario(usuarioData)
-                }else{
-                  console.warn("Nenhum documento encontrado para o usuário");
-                  setUsuario({} as UsuarioType)
-                }
-              
-                const userData = {
-                  uid : _user.uid,
-                  email : _user.email
-                }
-    
-                AsyncStorage.setItem("@user",JSON.stringify(userData))
-                setLoged(true)
-
-                setTimeout(async () => { 
-                  setInitializing(false);
-                }, 1000);                
-              }            
-            }catch(error:any){
-              if(initializing) setInitializing(false)
-              if (__DEV__) {
-              console.error("Erro ao buscar dados do Firestore:", error);
-              }
-            }
-          }else{
-            if(initializing) setInitializing(false)
-            AsyncStorage.removeItem("@user")
-          }
-        }catch (error) {
-          if(initializing) setInitializing(false)
-          if (__DEV__) {
-          console.error("Erro ao salvar ou remover dados do AsyncStorage:", error); 
-          }
-        }
-        
-      });   
-      return unsubscribe;   
+  if (!_user.emailVerified) {
+    try {
+      await _user.sendEmailVerification();
+      Alert.alert(
+        "E-mail não verificado",
+        "Acesse o e-mail cadastrado, clique no link enviado e tente novamente!"
+      );
+      setTimeout(async () => {
+        await auth().signOut();
+        await AsyncStorage.removeItem("@user");
+        setInitializing(false);
+        setUsuario({} as UsuarioType);
+      }, 500);
+    } catch (error) {
+      console.error("Erro ao enviar verificação de e-mail:", error);
     }
+    return;
+  }
+
+  try {
+    // 🔹 Busca o documento do usuário no Firestore
+    const docSnapshot = await firestore()
+      .collection("usuario")
+      .doc(_user.uid)
+      .get();
+
+    if (!docSnapshot.exists) {
+      console.warn("Nenhum documento encontrado para o usuário");
+      setUsuario({} as UsuarioType);
+      setLoged(false);
+      return;
+    }
+
+    const usuarioData = docSnapshot.data() as UsuarioType;
+
+    // 🔹 Bloqueia acesso se for null, undefined ou diferente de 2
+    if (!usuarioData?.acesso || usuarioData.acesso !== 2) {
+      console.warn("Usuário sem permissão de admin");
+      setUsuario(usuarioData);
+      setLoged(true);
+      return; // aqui você pode redirecionar ou mostrar tela de acesso negado
+    }
+
+    // 🔹 Usuário admin (acesso == 2)
+    setUsuario({
+      ...usuarioData,
+      acesso: Number(usuarioData.acesso || 0)
+    });
+
+    const userData = {
+      uid: _user.uid,
+      email: _user.email,
+    };
+
+    await AsyncStorage.setItem("@user", JSON.stringify(userData));
+    setLoged(true);
+
+  } catch (error) {
+    console.error("Erro ao buscar dados do Firestore:", error);
+    Alert.alert("Erro ao carregar informações do usuário");
+  } finally {
+    setTimeout(() => {
+      setInitializing(false);
+    }, 1000);
+  }
+});
+
+
+      return unsubscribe;
+    }
+
     else if( action == 'reload'){
       const _user = auth().currentUser
       const reload = async()=>{
@@ -156,50 +198,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children})=>{
 
   useEffect(()=>{loadFromStorage()},[]) 
 
-  async function loadFromStorage(){
-    setAction("login")
-    setInitializing(true)
+  async function loadFromStorage() {
     const userLoged = await AsyncStorage.getItem('@user')
-    console.log("v1 - User",userLoged)
-    if(userLoged){
-      setUser(JSON.parse(userLoged) as FirebaseAuthTypes.User)
-    }else{
+    if (userLoged) {
+      setUser(JSON.parse(userLoged) as FirebaseAuthTypes.User);
+      setAction("login");
+    } else {
       await AsyncStorage.removeItem("@user");
-      setAction("")
+      setAction("");
+      setInitializing(false); // ✅ garante que o loader não fique infinito
     }
   }
 
-  async function signUp(email:string , password:string):Promise<FirebaseAuthTypes.User | null | undefined> {
-    try{
-      setAction("cadastro")
-      setInitializing(true)
-      if(email && password){
-        
-        const user = await auth()
-        .createUserWithEmailAndPassword(email , password)
-        .then((data) => {return data.user})
-        .catch((error)=>{
-          setInitializing(false)
-          handleError(error)
-          return null;
+async function signUp(email: string, password: string): Promise<FirebaseAuthTypes.User | null | undefined> {
+  try {
+    setAction("cadastro");
+    setInitializing(true);
+
+    if (email && password) {
+      const user = await auth()
+        .createUserWithEmailAndPassword(email, password)
+        .then(async (data) => {
+          // ✅ Envia verificação de e-mail
+          if (data.user && !data.user.emailVerified) {
+            await data.user.sendEmailVerification();
+          }
+          return data.user;
         })
-        return user;
-      }else{
-        handleError('email ou senha inválidos')
-        if(initializing) setInitializing(false)
-        return null;
-      }
-    }catch(error:any){
-      handleError(error)
+        .catch((error) => {
+          setInitializing(false);
+          handleError(error);
+          return null;
+        });
+
+      return user;
+    } else {
+      handleError('E-mail ou senha inválidos');
+      if (initializing) setInitializing(false);
       return null;
     }
-    finally {
-      setTimeout(async () => { 
-        if (initializing) setInitializing(false);
-      }, 1000); 
-      
-    }
+  } catch (error: any) {
+    handleError(error);
+    return null;
+  } finally {
+    setTimeout(() => {
+      if (initializing) setInitializing(false);
+    }, 1000);
   }
+}
+
 
   async function signIn(email:string , password:string):Promise<void>{
     try{
@@ -297,7 +344,8 @@ export type fileDoc = {
     latitude:string,
     longitute:string
   },
-  uf:string
+  uf:string,
+  origem?: 'camera' | 'galeria' | 'documento' | string;
 }
 
 export type records = {
@@ -311,4 +359,3 @@ export type records = {
   timestamp: number,
   itens:fileDoc[]
 }
-

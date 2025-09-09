@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Router } from './src/routes/index';
 import { AuthProvider } from './src/context/Auth';
 import app from '@react-native-firebase/app';
-import { firebaseConfig } from './src/config/firebaseConfig'; // Configuração do Firebase
+import { firebaseConfig } from './src/config/firebaseConfig';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar, StyleSheet } from 'react-native';
 
@@ -18,18 +18,16 @@ export default function App() {
         });
     }
   }, []);
+
   return (
     <SafeAreaProvider style={styles.container}>
       <StatusBar
-        translucent={true} // Faz com que a barra de status fique sobre o conteúdo
-        backgroundColor="transparent" // Faz a barra de status ficar transparente
-        barStyle="light-content" // Cor dos ícones da barra de status
-        // barStyle="dark-content" // Cor dos ícones da barra de status
+        translucent={true}
+        backgroundColor="transparent"
+        barStyle="light-content"
       />
       <AuthProvider>
-        <AuthProvider>
-          <Router/>
-        </AuthProvider>
+        <Router />
       </AuthProvider>
     </SafeAreaProvider>
   );

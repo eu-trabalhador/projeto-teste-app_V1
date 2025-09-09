@@ -1,89 +1,47 @@
-import React, { SetStateAction, useState } from 'react';
+import React, { useState } from 'react';
 import { TouchableOpacity, Text, StyleSheet, Image, View } from 'react-native';
-import { fileDoc } from '../context/Auth';
 
 type Props = {
   imagePath: any;
-  text1: string;
-  text2: string;
-  text3: string;
-  text4: string;
-  text5: string;
-  // selecting: boolean;
-  // longPress?: () => void;
-  // number?: (value: number) => void;
+  text1: string; // Título
+  text2: string; // Subtítulo
+  text3: string; // Cidade
+  text4: string; // UF
+  text5: string; // Outro texto
   onPress?: () => void;
 };
 
-
-
 export const CardM5 = ({
-    imagePath, 
-    text1,
-    text2,
-    text3,
-    text4,
-    text5,
-    // selecting,
-    // longPress,
-    // number
-    onPress,
-  }:Props) => {
-
+  imagePath, 
+  text1,
+  text2,
+  text3,
+  text4,
+  text5,
+  onPress,
+}: Props) => {
   const [status, setStatus] = useState(false);
-  // const [status, setStatus] = useState(false);
-  // const toggleStatus = (value: boolean) => {
-  //   setStatus(value);
-  //   if(value && number){
-  //     number(+1)
-  //   }
-  //   if(!value && number){
-  //     number(-1)
-  //   }
-  // };
 
   const toggleView = () => {
-    if(imagePath && onPress) onPress()
+    if (imagePath && onPress) onPress();
   };
 
-  
   const backgroundColor = status ? "#ADD1F4" : "#ffffff";
 
   return (
     <TouchableOpacity 
-    style={[styles.button, { backgroundColor }]} 
-
-    onPress={()=>{
-      // if(selecting){
-      //   if(status) toggleStatus(false)
-      //   else(toggleStatus(true))
-      // }
-      toggleView()
-    }}     
-    
-    // onLongPress={()=>{
-    //   if(selecting){
-    //     toggleStatus(!status)
-    //   }
-    //   if(!selecting){
-    //     if(longPress)longPress()
-    //       toggleStatus(true)
-    //   }
-    
-    // }}
+      style={[styles.button, { backgroundColor }]} 
+      onPress={toggleView}
     >
       <View style={styles.container}>
-        
-        
         <Image
-          source={typeof(imagePath) == 'number'?imagePath: {uri: `${imagePath}` }}
+          source={typeof(imagePath) === 'number' ? imagePath : { uri: `${imagePath}` }}
           style={styles.image}
         />
-        <View style = {styles.containerText}>
+        <View style={styles.containerText}>
           <Text allowFontScaling={false} style={styles.text1} numberOfLines={2} ellipsizeMode="tail">{text1}</Text>
           <Text allowFontScaling={false} style={styles.text3}>{text2}</Text>
-          <Text allowFontScaling={false} style={styles.text2}>{"Cidade, UF"}</Text>
-          <Text allowFontScaling={false} style={styles.text3}>{text4}</Text>
+          <Text allowFontScaling={false} style={styles.text2}>{`${text3}, ${text4}`}</Text>
           <Text allowFontScaling={false} style={styles.text3}>{text5}</Text>
         </View>
       </View>

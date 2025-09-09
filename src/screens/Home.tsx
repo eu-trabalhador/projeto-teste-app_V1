@@ -20,6 +20,7 @@ import { Bar } from '../components/Bar';
 import { useUser } from '../context/Auth';
 import * as ImageManipulator from "expo-image-manipulator";
 import { camera, fileImage, file } from '../../services/managerfiles';
+import * as Location from 'expo-location';
 import storage from "@react-native-firebase/storage"
 import firestore from "@react-native-firebase/firestore"
 import { handleError } from '../context/Auth';
@@ -27,6 +28,47 @@ import {useNavigation} from '@react-navigation/native'
 import { AppStack } from '../routes/AppStack'
 
 export default function Home() {
+
+async function getLocation() {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão negada', 'Ative a permissão de localização nas configurações.');
+      return null;
+    }
+
+    const location = await Location.getCurrentPositionAsync({});
+    const { latitude, longitude } = location.coords;
+
+    // Faz a conversão das coordenadas
+    const reverseGeocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+    const geo = reverseGeocode[0];
+
+    // Monta endereço mais completo possível
+    const endereco = [
+      geo.name, // ex: número e nome da rua
+      geo.street,
+      geo.district,
+      geo.subregion,
+      geo.city,
+      geo.region,
+    ]
+      .filter(Boolean) // remove null/undefined
+      .join(", ");
+
+    return {
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      cidade: geo.city || geo.subregion || "Cidade não encontrada",
+      uf: geo.region || "UF não encontrada",
+      enderecoCompleto: endereco || "Endereço não encontrado",
+    };
+  } catch (error) {
+    console.warn("Erro ao obter localização:", error);
+    return null;
+  }
+}
+
 
   const navigation = useNavigation<AppStack>();
   //carregamento de dados pessoais
@@ -51,57 +93,98 @@ export default function Home() {
   },[usuario])
 
   //camera diretamente
-  const handleCamera = async()=>{
-    const imageDados = await camera()
+  const handleCamera = async () => {
+    const imageDados = await camera();
     const currentDate = new Date();
-    const formattedDateTime = new Intl.DateTimeFormat('pt-BR', { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit', 
-      hour: '2-digit', 
-      minute: '2-digit', 
+    const formattedDateTime = new Intl.DateTimeFormat('pt-BR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
       second: '2-digit',
     }).format(currentDate);
-    setPopupVisible(false)
-    
-    handleStorage(imageDados,'imagem','',formattedDateTime,"31.7700","52.3313","Pelotas","RS")
-  }
+
+    setPopupVisible(false);
+
+    const location = await getLocation();
+    if (!location) return;
+
+    handleStorage(
+      imageDados,
+      'imagem',
+      '',
+      formattedDateTime,
+      location.latitude,
+      location.longitude,
+      location.cidade,
+      location.uf,
+      'camera',
+    );
+  };
 
   //galeria de imagens
-  const handleGallery = async()=>{
-    const image = await fileImage()
-    setPopupVisible(false)
+  const handleGallery = async () => {
+    const image = await fileImage();
+    setPopupVisible(false);
+
     const currentDate = new Date();
-    const formattedDateTime = new Intl.DateTimeFormat('pt-BR', { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit', 
-      hour: '2-digit', 
-      minute: '2-digit', 
+    const formattedDateTime = new Intl.DateTimeFormat('pt-BR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
       second: '2-digit',
     }).format(currentDate);
-    
-    handleStorage(image,'imagem','',formattedDateTime,"31.7700","52.3313","Pelotas","RS")
-  }
-  
+
+    const location = await getLocation();
+    if (!location) return;
+
+    handleStorage(
+      image,
+      'imagem',
+      '',
+      formattedDateTime,
+      location.latitude,
+      location.longitude,
+      location.cidade,
+      location.uf,
+      'galeria',
+    );
+  };
 
   //galeria de documentos
-  const handleFiles = async()=>{
-    setPopupVisible(false)
-    const image = await file()
+  const handleFiles = async () => {
+    setPopupVisible(false);
+    const image = await file(); // pode ser documento
     const currentDate = new Date();
-    const formattedDateTime = new Intl.DateTimeFormat('pt-BR', { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit', 
-      hour: '2-digit', 
-      minute: '2-digit', 
+    const formattedDateTime = new Intl.DateTimeFormat('pt-BR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
       second: '2-digit',
     }).format(currentDate);
-    if(image){
-      handleStorage(image.uri,'documento',image.name,formattedDateTime,"31.7700","52.3313","Pelotas","RS")
+
+    if (image) {
+      const location = await getLocation();
+      if (!location) return;
+
+      handleStorage(
+        image.uri,
+        'documento',
+        image.name,
+        formattedDateTime,
+        location.latitude,
+        location.longitude,
+        location.cidade,
+        location.uf
+      );
     }
-  }
+  };
+
 
 
   const openFolder = async (path:any) => {
@@ -111,7 +194,7 @@ export default function Home() {
 
 
   //funcão de carregamento de imagem de camera:
-  const handleStorage = async (image:any,type:string,name:string,time:any,latitude:any,longitude:any,cidade:string,uf:string)=>{
+  const handleStorage = async (image:any,type:string,name:string,time:any,latitude:any,longitude:any,cidade:string,uf:string,origem?: 'camera' | 'galeria' | 'documento' | string)=>{
     setSpiner(true)
     try{
 
@@ -156,6 +239,8 @@ export default function Home() {
           },
           status:true,
           uf:uf.toLocaleLowerCase(),
+          origem: origem || 'desconhecida',
+          size: 0,
         }
         
         //subindo imagem
@@ -166,12 +251,10 @@ export default function Home() {
 
           const downloadURL = await storageRef.getDownloadURL();
           fileDoc.url=downloadURL
-          
-          
-          // .then((e)=>{
-          // // await storage().ref(`files/${filename}`).putFile(filePath).then((e)=>{
-          //   fileDoc.url = `https://firebasestorage.googleapis.com/v0/b/teste-atauan.firebasestorage.app/o/${e.metadata.fullPath}?alt=media&token=${e.metadata.downloadTokens}`.replace('files/','files%2F').replace(" ","_")
-          // })
+
+          const metadata = await storageRef.getMetadata();
+          fileDoc.size = metadata.size ? Number(metadata.size) : 0; // em bytes
+
         }else{
           setSpiner(false)
           return;
